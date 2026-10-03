@@ -1,109 +1,39 @@
-import { vfs, HOME } from './content/vfs.js';
+// The only file that touches the DOM. Reads a line, runs it, prints lines.
+
+import { commands } from './core/commands.js';
+import { HOME, get, read, short } from './core/fs.js';
 
 const out = document.getElementById('out');
 const input = document.getElementById('in');
 const form = document.getElementById('line');
 const label = document.querySelector('.prompt');
-const USER = 'visitor69';
-const HOST = 'unikorm';
 
-// A line is { spans: [{ text, tone }] }. Commands return lines, never HTML.
-const L = (text, tone) => ({ spans: [{ text, tone }] });
-
-// --- filesystem ---------------------------------------------------------
-
-let cwd = HOME;
-let prev = HOME;   // for `cd -`
-
-// absolute, normalised path from whatever the visitor typed
-function resolve(p) {
-  if (!p || p === '~') return HOME;
-  if (p.startsWith('~/')) p = HOME + p.slice(1);
-  if (!p.startsWith('/')) p = cwd + '/' + p;
-  const parts = [];
-  for (const seg of p.split('/')) {
-    if (!seg || seg === '.') continue;
-    if (seg === '..') parts.pop(); else parts.push(seg);
-  }
-  return '/' + parts.join('/');
-}
-
-const join = (dir, name) => (dir === '/' ? '' : dir) + '/' + name;
-
-// direct children of a directory, by prefix
-function children(dir) {
-  const prefix = dir === '/' ? '/' : dir + '/';
-  return [...vfs.keys()]
-    .filter(p => p !== dir && p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
-    .map(p => p.slice(prefix.length))
-    .sort();
-}
-
-const isDir = (path) => vfs.get(path)?.type === 'dir';
-const locked = (path) => [...vfs].some(([p, n]) => n.locked && (path === p || path.startsWith(p + '/')));
-
-// /home/unikorm/x -> ~/x, as bash shows it
-const short = (path) => path === HOME ? '~' : path.startsWith(HOME + '/') ? '~' + path.slice(HOME.length) : path;
-const prompt = () => `${USER}@${HOST}:${short(cwd)}$`;
-
-// --- commands -----------------------------------------------------------
-
-const commands = {
-  help: () => [
-    L("help doesn't come here", 'dim'),
-  ],
-  clear: () => { out.replaceChildren(); return []; },
-  whoami: () => [L('nobody')],
-
-  pwd: () => [L(cwd)],
-
-  cd: ([arg]) => {
-    const target = arg === '-' ? prev : resolve(arg);
-    const node = vfs.get(target);
-    if (!node) return [L(`bash: cd: ${arg}: No such file or directory`)];
-    if (node.type !== 'dir') return [L(`bash: cd: ${arg}: Not a directory`)];
-    if (locked(target)) return [L(`bash: cd: ${arg}: Permission denied`)];
-    prev = cwd;
-    cwd = target;
-    return arg === '-' ? [L(cwd)] : [];
+// session state. commands may change cwd, history and aliases; nothing else.
+const ctx = {
+  user: 'visitor69',
+  host: 'unikorm',
+  cwd: HOME,
+  prev: HOME,
+  env: {
+    USER: 'visitor69', HOME, SHELL: '/bin/bash', PATH: '/usr/local/bin:/usr/bin:/bin',
+    TERM: 'xterm-256color', HOSTNAME: 'unikorm.eu', LANG: 'en_US.UTF-8', EDITOR: 'vim',
   },
-
-  ls: (args) => {
-    const all = args.includes('-a');
-    const arg = args.find(a => !a.startsWith('-')) ?? '.';
-    const target = resolve(arg);
-    const node = vfs.get(target);
-    if (!node) return [L(`ls: cannot access '${arg}': No such file or directory`)];
-    if (locked(target)) return [L(`ls: cannot open directory '${arg}': Permission denied`)];
-    if (node.type === 'file') return [L(arg)];
-    const names = children(target).filter(n => all || !n.startsWith('.'));
-    if (all) names.unshift('.', '..');
-    const spans = [];
-    for (const n of names) {
-      if (spans.length) spans.push({ text: '  ' });
-      const dir = n === '.' || n === '..' || isDir(join(target, n));
-      spans.push({ text: n, tone: dir ? 'bright' : undefined });
-    }
-    return spans.length ? [{ spans }] : [];
-  },
-
-  cat: (args) => {
-    if (!args.length) return [L('usage: cat <file>', 'dim')];
-    return args.flatMap(arg => {
-      const target = resolve(arg);
-      if (locked(target)) return [L(`cat: ${arg}: Permission denied`)];
-      const node = vfs.get(target);
-      if (!node) return [L(`cat: ${arg}: No such file or directory`)];
-      if (node.type === 'dir') return [L(`cat: ${arg}: Is a directory`)];
-      return node.body.split('\n').map(t => L(t));
-    });
-  },
+  history: [],
+  aliases: {},
+  clear: () => out.replaceChildren(),
+  theme: (name) => { document.documentElement.dataset.theme = name; },
 };
 
-// --- terminal -----------------------------------------------------------
+// source ~/.bashrc: the alias lines in it are real
+for (const [, name, value] of read(get(HOME + '/.bashrc')).matchAll(/^alias ([^=\s]+)='([^']*)'/gm)) ctx.aliases[name] = value;
 
-function print(lines) {
+const prompt = () => `${ctx.user}@${ctx.host}:${short(ctx.cwd)}$`;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// A line is { spans: [{ text, tone }], delay? }. This is the only renderer.
+async function print(lines) {
   for (const line of lines) {
+    if (line.delay) await sleep(line.delay);
     const el = document.createElement('div');
     for (const span of line.spans) {
       const s = document.createElement('span');
@@ -112,45 +42,52 @@ function print(lines) {
       el.append(s);
     }
     out.append(el);
+    input.scrollIntoView({ block: 'end' });
   }
 }
 
+// split a line into words, honouring quotes, then drop the quotes
+const words = (raw) => (raw.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []).map(w => w.replace(/"([^"]*)"|'([^']*)'/g, '$1$2'));
+
 function run(raw) {
-  const [cmd, ...args] = raw.trim().split(/\s+/);
+  let [cmd, ...args] = words(raw);
   if (!cmd) return [];
+  if (ctx.aliases[cmd]) [cmd, ...args] = [...words(ctx.aliases[cmd]), ...args];
   const fn = commands[cmd];
-  if (!fn) return [
-    L(`bash: ${cmd}: command not found`),
-  ];
-  return fn(args);
+  if (!fn) return [{ spans: [{ text: `bash: ${cmd}: command not found` }] }];
+  return fn(args, ctx);
 }
 
-// history: arrow keys walk previous commands, in memory only
-const history = [];
+// history: arrow keys walk previous commands
 let cursor = 0;
+
+// commands run one after another, so a delayed line never interleaves with the next command
+let queue = Promise.resolve();
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const raw = input.value;
   input.value = '';
   sync();
-  print([{ spans: [{ text: prompt() + ' ', tone: 'dim' }, { text: raw }] }]);
-  if (raw.trim()) history.push(raw);
-  cursor = history.length;
-  print(run(raw));
-  label.textContent = prompt();
-  input.scrollIntoView({ block: 'end' });
+  if (raw.trim()) ctx.history.push(raw);
+  cursor = ctx.history.length;
+  queue = queue.then(async () => {
+    await print([{ spans: [{ text: prompt() + ' ', tone: 'dim' }, { text: raw }] }]);
+    await print(run(raw));
+    label.textContent = prompt();
+    input.scrollIntoView({ block: 'end' });
+  });
 });
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowUp' && cursor > 0) {
     cursor--;
-    input.value = history[cursor];
+    input.value = ctx.history[cursor];
     sync();
     e.preventDefault();
   } else if (e.key === 'ArrowDown') {
-    cursor = Math.min(cursor + 1, history.length);
-    input.value = history[cursor] ?? '';
+    cursor = Math.min(cursor + 1, ctx.history.length);
+    input.value = ctx.history[cursor] ?? '';
     sync();
     e.preventDefault();
   }
