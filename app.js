@@ -61,8 +61,8 @@ const commands = {
     const target = arg === '-' ? prev : resolve(arg);
     const node = vfs.get(target);
     if (!node) return [L(`bash: cd: ${arg}: No such file or directory`)];
-    if (node.type !== 'dir') return [L(`bash: cd ${arg}: Not a directory`)];
-    if (locked(target)) return [L(`bash: cd ${arg}: Permission denied`)];
+    if (node.type !== 'dir') return [L(`bash: cd: ${arg}: Not a directory`)];
+    if (locked(target)) return [L(`bash: cd: ${arg}: Permission denied`)];
     prev = cwd;
     cwd = target;
     return arg === '-' ? [L(cwd)] : [];

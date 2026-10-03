@@ -32,16 +32,8 @@ really are dated log entries. If a path doesn't earn its meaning, don't use it.
 
 ## 1. End state (write this first, build backwards from it)
 
-A stranger opens the site. Before they type anything they already see something worth
-reading: the MOTD banner, a one-line identity, and three suggested commands. They type
-`ls`, they type `whoami`, they misspell something and the shell guides them. Within two
-minutes they know who this person is, what they've built, and what they think. They can
-share a link to one blog post and it opens straight to it.
-
 Success checks:
 
-- A visitor who only ever types `help` still gets the whole site.
-- A visitor who types plain English (`who are you`, `show me your writing`) gets somewhere.
 - A visitor who knows Linux finds jokes rewarding them for knowing Linux.
 - Nothing scrolls past that can't be scrolled back to.
 - On a phone, the on-screen keyboard doesn't break the layout.
@@ -53,12 +45,11 @@ Success checks:
 2. **M2 — VFS.** The path map and the node model. `ls`, `cd`, `pwd`, `cat`, `tree`.
 3. **M3 — content.** Fill the tree with real content. This is the longest step and it's
    authoring, not coding.
-4. **M4 — character commands.** `man`, `neofetch`, `dmesg`, `top`, `sudo`, `fortune`.
-5. **M5 — persistence.** History, cwd, env, read-markers.
-6. **M6 — intent resolver.** Natural language fallback.
-7. **M7 — polish.** CRT treatment, reduced-motion, noscript fallback, deep links, a11y.
+4. **M4 — persistence.** History, cwd, env, read-markers.
+5. **M5 — intent resolver.** Natural language fallback.
+6. **M6 — polish.** CRT treatment, reduced-motion, noscript fallback, deep links, a11y.
 
-Ship after M4. M5–M7 are improvements to a site that already works.
+Ship after M4. M5–M6 are improvements to a site that already works.
 
 ---
 
@@ -248,25 +239,7 @@ you can build.
 
 ---
 
-## 5. Intent resolver
-
-The mockup already has this ("resolving intent ..."). Keep it. Order of resolution:
-
-1. Exact command match.
-2. User-defined alias.
-3. Path match (bare `/var/log` behaves as `cd /var/log`).
-4. Fuzzy command match, Levenshtein ≤ 2 → `did you mean 'ls'? [y/n]`.
-5. Keyword intent: match against a small table of phrase patterns → suggested command.
-   `who are you` → `man <handle>`. `what do you do` → `top`. `writing`/`blog`/`posts` →
-   `ls -lt /var/log`. `hire`/`contact`/`email` → `cat /etc/aliases`.
-6. Nothing matched → print the six things it *does* understand. Never a bare error.
-
-Show the resolution steps in dim text before the answer. It's honest UI and it teaches
-the grammar. Keep it to two lines; don't fake a delay longer than ~250ms.
-
----
-
-## 6. `/var/games/`
+## 5. `/var/games/ (optional, not now)`
 
 One small playable thing, self-contained in the buffer. Candidates, pick one:
 
@@ -279,88 +252,7 @@ It must be finishable in under two minutes and it must not hijack the shell perm
 
 ---
 
-## 7. Content authoring
-
-All content lives in `content/`, separate from `core/`. Adding a blog post must be one new
-file plus one line in the index, never a code change.
-
-Post format: plain text with a tiny inline markup subset so the renderer stays trivial.
-
-```
---- 
-path:  /var/log/2026-07-02-the-cursor-is-the-whole-interface
-title: the cursor is the whole interface
-date:  2026-07-02
-tags:  [ui, terminals]
----
-
-Body text, wrapped at 76 columns by the author, not by CSS.
-
-  indented block for code
-
-`inline` for emphasis, [text](/path) for links to other VFS nodes.
-```
-
-Wrap at 76 columns in the source. A terminal has hard columns; letting CSS reflow prose
-destroys the illusion and breaks ASCII art. Set the buffer to a fixed 80ch measure on
-desktop and scale the font down on narrow screens rather than reflowing.
-
----
-
-## 8. Persistence
-
-`localStorage`, namespaced, versioned, and entirely optional.
-
-| Key | Contents | Cap |
-|---|---|---|
-| `term:v` | schema version integer | — |
-| `term:history` | command strings, newest last | 200 entries |
-| `term:cwd` | last directory | — |
-| `term:env` | `{HANDLE, PHOSPHOR, SCANLINES, MOTION}` | — |
-| `term:read` | paths already `cat`-ed, for `NEW` markers in `ls` | 500 |
-| `term:aliases` | user-defined via `alias x='y'` | 50 |
-| `term:first` | epoch of first visit | — |
-| `term:visits` | visit count | — |
-
-Rules:
-
-- Every access wrapped in `try/catch`. Private browsing and disabled storage must degrade
-  to an in-memory object with zero user-visible difference beyond forgetting.
-- On `term:v` mismatch: wipe the namespace, don't migrate. It's a website.
-- `term:first` and `term:visits` power a genuinely nice touch: `uptime` reports the
-  *visitor's* session — `up 4 days, 2 users, load average: ...` on a return visit, and
-  the MOTD says `last login: <date> from <a made-up tty>`.
-- Never store anything a visitor would mind being stored. No text they typed beyond
-  command history, no identifiers, no fingerprinting.
-- `clear` clears the screen. `history -c` clears storage. Offer both, explicitly.
-
----
-
-## 9. Deep links
-
-One route, but a blog post has to be shareable.
-
-- Reading a file calls `history.replaceState(null, '', '#' + path)`.
-- On load, if `location.hash` is a valid path: print the MOTD, then auto-run
-  `cat <path>` as though the visitor typed it, and leave them at a prompt in that
-  directory. Don't skip the boot sequence; the arrival is the point.
-- Invalid hash → normal boot, no error.
-- No `pushState`, no router, no back-button behaviour to maintain.
-
----
-
-## 10. No-JS fallback
-
-Inside `<noscript>`, render the entire VFS as a plain nested `<article>` list with real
-headings and real `<a href="#path">` anchors. Generate it at author time with a small Node
-script into `index.html` (build-time only — still zero runtime dependencies).
-
-This is not an accessibility fig leaf. It's how search engines index the site, how the
-content survives, and how anyone can read a post without the theatre.
-
----
-
-## 11. Visual direction
+## 6. Visual direction
 
 Take exact values from the exported mockup. Starting points:
 
@@ -402,31 +294,3 @@ in actual columns. Every place the illusion is exact is a place the site earns i
 Every place it's approximate, it looks like a template.
 
 ---
-
-## 12. Accessibility
-
-- The output buffer is real DOM text, selectable and copyable.
-- Output region is `aria-live="polite"`, `role="log"`.
-- The input is a real `<input>` with a visible label for screen readers, focused on load
-  and refocused on any click in the terminal area.
-- Visible focus ring that isn't only a colour change.
-- Contrast: `--dim` on `--bg` must still clear 4.5:1. Check it; period-accurate dim green
-  usually fails.
-- Full keyboard: ↑/↓ history, Tab completion for commands and paths, Ctrl-C to abort,
-  Ctrl-L to clear, Ctrl-A/E line editing.
-- Mobile: tapping anywhere focuses input; the prompt stays above the on-screen keyboard
-  (`dvh` units, not `vh`); font scales down instead of reflowing.
-
----
-
-## 13. Acceptance checklist
-
-- [ ] Total JS under 50KB unminified. If it's bigger, something is over-built.
-- [ ] Zero network requests after initial load.
-- [ ] Lighthouse: 100 on accessibility, 100 on best practices.
-- [ ] Works with `localStorage` throwing on every call.
-- [ ] Works with JS disabled (plain, ugly, complete).
-- [ ] Every path in §3 returns something worth reading.
-- [ ] `help` alone gets a visitor to every section.
-- [ ] Reads correctly at 360px wide.
-- [ ] Tab completion doesn't leak paths under `/root`.
