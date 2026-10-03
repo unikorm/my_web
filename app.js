@@ -45,6 +45,7 @@ form.addEventListener('submit', (e) => {
   e.preventDefault();
   const raw = input.value;
   input.value = '';
+  sync();
   print([{ spans: [{ text: PROMPT, tone: 'dim' }, { text: raw }] }]);
   if (raw.trim()) history.push(raw);
   cursor = history.length;
@@ -56,12 +57,26 @@ input.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowUp' && cursor > 0) {
     cursor--;
     input.value = history[cursor];
+    sync();
     e.preventDefault();
   } else if (e.key === 'ArrowDown') {
     cursor = Math.min(cursor + 1, history.length);
     input.value = history[cursor] ?? '';
+    sync();
     e.preventDefault();
   }
+});
+
+// the input is exactly as wide as its text, so the block cursor sits right after it
+function sync() { input.style.width = input.value.length + 'ch'; }
+
+// cursor stops blinking while typing
+let typing;
+input.addEventListener('input', () => {
+  sync();
+  form.classList.add('typing');
+  clearTimeout(typing);
+  typing = setTimeout(() => form.classList.remove('typing'), 500);
 });
 
 // tapping anywhere in the terminal focuses the input

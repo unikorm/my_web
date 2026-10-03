@@ -1,50 +1,95 @@
 :root {
-  --bg:     #050b07;
-  --dim:    #2f6b42;
-  --fg:     #4ade80;
-  --bright: #a7f3c0;
-  --font:   ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
+  --bg:        #030905;   /* corners of the vignette */
+  --bg-glow:   #0c2f1c;   /* centre of the vignette */
+  --dim:       #2f6b42;
+  --fg:        #4ade80;
+  --bright:    #a7f3c0;
+  --invert-bg: #4ade80;
+  --invert-fg: #05140a;
+  --warn:      #d9a441;
+  --scanlines: 0.16;      /* 0 = off */
+  --font: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
 
-html, body {
+html { background: var(--bg); }   /* body gets no background, or it hides the vignette */
+
+body {
   margin: 0;
-  background: var(--bg);
   color: var(--fg);
-  font: 15px/1.5 var(--font);
+  font: 16px/1.7 var(--font);
+  text-shadow: 0 0 2px currentColor;   /* phosphor glow, one layer */
+}
+
+/* vignette: one radial gradient behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, var(--bg-glow) 0%, var(--bg-glow) 20%, var(--bg) 85%);
+}
+
+/* scanlines: one overlay above everything, never catches clicks */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, var(--scanlines)) 0 1px, transparent 1px 3px);
 }
 
 #term {
-  max-width: 80ch;
-  margin: 0 auto;
-  padding: 1rem;
+  max-width: 100%;
+  padding: clamp(1rem, 5vw, 4rem);
   min-height: 100dvh;
 }
 
 #out { white-space: pre-wrap; }
 
-#out div { min-height: 1.5em; }
+#out div { min-height: 1.7em; }
 
 .dim    { color: var(--dim); }
-.bright { color: var(--bright); }
+.bright { color: var(--bright); text-shadow: 0 0 4px currentColor; }
+.warn   { color: var(--warn); }
+.invert { background: var(--invert-bg); color: var(--invert-fg); text-shadow: none; padding: 0 1ch; }
 
 #line {
   display: flex;
-  gap: 1ch;
+  align-items: center;
 }
 
-.prompt { white-space: nowrap; }
+.prompt { color: var(--dim); white-space: nowrap; margin-right: 1ch; }
 
 #in {
-  flex: 1;
+  width: 0;               /* set to the typed length by app.js */
   background: none;
   border: 0;
   outline: 0;
   padding: 0;
+  margin: 0;
   color: inherit;
   font: inherit;
-  caret-color: var(--fg);
+  text-shadow: inherit;
+  caret-color: transparent;   /* the block below is the cursor */
+}
+
+.cursor {
+  display: inline-block;
+  width: 1ch;
+  height: 1.2em;
+  background: var(--fg);
+  animation: blink 1.2s steps(1) infinite;
+}
+
+.typing .cursor { animation: none; }
+
+@keyframes blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
 }
 
 @media (max-width: 600px) {
