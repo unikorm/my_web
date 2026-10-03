@@ -7,7 +7,7 @@
   --invert-bg: #4ade80;
   --invert-fg: #05140a;
   --warn:      #d9a441;
-  --scanlines: 0.16;      /* 0 = off */
+  --scanlines: 3.16;      /* 0 = off */
   --font: ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
 }
 
