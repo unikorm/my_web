@@ -1,0 +1,52 @@
+:root {
+  --bg:     #050b07;
+  --dim:    #2f6b42;
+  --fg:     #4ade80;
+  --bright: #a7f3c0;
+  --font:   ui-monospace, 'SF Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--font);
+}
+
+#term {
+  max-width: 80ch;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100dvh;
+}
+
+#out { white-space: pre-wrap; }
+
+#out div { min-height: 1.5em; }
+
+.dim    { color: var(--dim); }
+.bright { color: var(--bright); }
+
+#line {
+  display: flex;
+  gap: 1ch;
+}
+
+.prompt { white-space: nowrap; }
+
+#in {
+  flex: 1;
+  background: none;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  caret-color: var(--fg);
+}
+
+@media (max-width: 600px) {
+  html, body { font-size: 12px; }
+}

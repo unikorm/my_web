@@ -1,4 +1,4 @@
-# endtimes.dev — terminal personal site
+# unikorm.eu — terminal personal site
 
 Spec for Claude Code. Drop this in the repo root, keep it updated, and point every session at it.
 
@@ -21,7 +21,6 @@ really are dated log entries. If a path doesn't earn its meaning, don't use it.
 - One route. `/` serves everything. Hash fragments are allowed for deep links (§9).
 - Vanilla JS (ES2022 modules), vanilla CSS, semantic HTML.
 - State lives in `localStorage`. Nothing critical depends on it (§8).
-- Works without JS: `<noscript>` renders the full content as plain readable HTML (§10).
 
 ### Non-goals
 
