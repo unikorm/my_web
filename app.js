@@ -1,7 +1,7 @@
 // The only file that touches the DOM. Reads a line, runs it, prints lines.
 
 import { commands } from './core/commands.js';
-import { HOME, get, read, short } from './core/fs.js';
+import { HOME, get, read, short, complete } from './core/fs.js';
 
 const out = document.getElementById('out');
 const input = document.getElementById('in');
@@ -79,7 +79,26 @@ form.addEventListener('submit', (e) => {
   });
 });
 
+// tab completes; a second tab that can't add anything lists the options, like bash
+let tabbed = false;
+
 input.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const before = input.value;
+    const { line, options } = complete(before, ctx.cwd, [...Object.keys(commands), ...Object.keys(ctx.aliases)]);
+    input.value = line;
+    sync();
+    if (line === before && options.length > 1 && tabbed) {
+      queue = queue.then(() => print([
+        { spans: [{ text: prompt() + ' ', tone: 'dim' }, { text: before }] },
+        { spans: [{ text: options.join('  ') }] },
+      ]));
+    }
+    tabbed = line === before;
+    return;
+  }
+  tabbed = false;
   if (e.key === 'ArrowUp' && cursor > 0) {
     cursor--;
     input.value = ctx.history[cursor];
@@ -99,6 +118,7 @@ function sync() { input.style.width = input.value.length + 'ch'; }
 // cursor stops blinking while typing
 let typing;
 input.addEventListener('input', () => {
+  tabbed = false;
   sync();
   form.classList.add('typing');
   clearTimeout(typing);
