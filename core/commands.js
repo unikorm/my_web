@@ -83,7 +83,7 @@ const expand = (word, ctx) => word.replace(/^~(?=\/|$)/, HOME).replace(/\$(\w+)/
 const BUILTINS = new Set(['cd', 'pwd', 'echo', 'alias', 'history', 'exit', 'help', 'theme']);
 
 // --- navigation -------------------------------------------------------------
-function pwd(args, ctx) { return [L(ctx.cwd)]; }
+function pwd(ctx) { return [L(ctx.cwd)]; }
 
 function cd([arg], ctx) {
   const path = arg === '-' ? ctx.prev : resolve(arg, ctx.cwd);
@@ -248,23 +248,6 @@ function man([topic]) {
   return read(node).split('\n').map(t => L(t, /^[A-Z][A-Z ]*$/.test(t) || /^[A-Z]+\(1\)/.test(t) ? 'bright' : undefined));
 }
 
-function file(args, ctx) {
-  if (!args.length) return [L('Usage: file <file>')];
-  return args.map(arg => {
-    const path = resolve(arg, ctx.cwd);
-    const node = get(path);
-    if (!node) return L(`${arg}: cannot open '${arg}' (No such file or directory)`);
-    if (locked(path) && node.type !== 'dir') return L(`${arg}: cannot open '${arg}' (Permission denied)`);
-    const kind = node.type === 'dir' ? 'directory'
-      : node.type === 'link' ? `symbolic link to ${node.target}`
-      : node.type === 'device' ? 'character special'
-      : typeof node.body !== 'string' ? 'data'
-      : node.body.startsWith('#!') ? 'Bourne-Again shell script, ASCII text executable'
-      : 'ASCII text';
-    return L(`${arg}: ${kind}`);
-  });
-}
-
 function which(args) {
   return args.flatMap(c => {
     if (get(`/usr/local/bin/${c}`)) return [L(`/usr/local/bin/${c}`)];
@@ -273,25 +256,6 @@ function which(args) {
   });
 }
 
-function stat([arg], ctx) {
-  if (!arg) return [L('stat: missing operand')];
-  const path = resolve(arg, ctx.cwd);
-  if (!get(path)) return [L(`stat: cannot statx '${arg}': No such file or directory`)];
-  const m = meta(path);
-  const kind = { dir: 'directory', file: 'regular file', link: 'symbolic link', device: 'character special file' }[m.type];
-  const octal = [...m.mode.slice(1)].reduce((s, c, i) => s + (c !== '-' ? [4, 2, 1][i % 3] : 0) * [64, 8, 1][Math.floor(i / 3)], 0);
-  const uid = m.owner === 'root' ? 0 : 1000;
-  const id = (n) => `${String(n).padStart(5)}/${m.owner.padStart(8)}`;
-  const when = m.mtime.includes('T') ? m.mtime.replace('T', ' ') + ':00' : m.mtime + ' 00:00:00';
-  const inode = [...vfs.keys()].indexOf(path) + 131073;
-  return [
-    L(`  File: ${arg}${m.type === 'link' ? ' -> ' + m.target : ''}`),
-    L(`  Size: ${String(m.size).padEnd(10)} Blocks: ${String(Math.ceil(m.size / 4096) * 8).padEnd(10)} IO Block: 4096   ${kind}`),
-    L(`Device: 801h/2049d   Inode: ${inode}   Links: ${m.nlink}`),
-    L(`Access: (0${octal.toString(8)}/${m.mode})  Uid: (${id(uid)})   Gid: (${id(uid)})`),
-    L(`Modify: ${when}`),
-  ];
-}
 
 // --- identity ---------------------------------------------------------------
 
@@ -315,7 +279,7 @@ function neofetch() {
     ['Host', sys.where],
     ['Kernel', sys.kernel],
     ['Uptime', up()],
-    ['Packages', `${children('/opt').length} (opt), ${children('/lost+found').length} (lost+found)`],
+    ['Packages', `${children('/opt').length} (opt)`],
     ['Shell', sys.shell],
     ['Terminal', sys.host],
     ['CPU', sys.cpu],
@@ -326,21 +290,6 @@ function neofetch() {
     const [k, v] = info[i] ?? ['', ''];
     return { spans: [{ text: (logo[i] ?? ' '.repeat(logo[0].length)) + '  ', tone: 'bright' }, ...(k ? [{ text: k + ': ', tone: 'bright' }] : []), { text: v }] };
   });
-}
-
-function finger([who = HANDLE]) {
-  const pw = read(get('/etc/passwd')).split('\n').find(l => l.startsWith(who + ':'));
-  if (!pw) return [L(`finger: ${who}: no such user.`)];
-  const [login, , , , gecos, dir, shell] = pw.split(':');
-  const [fullname, office] = gecos.split(',');
-  const plan = get(`${dir}/.plan`);
-  return [
-    L(`Login: ${login.padEnd(32)}Name: ${fullname}`),
-    L(`Directory: ${dir.padEnd(28)}Shell: ${shell}`),
-    L(`Office: ${office ?? '-'}`),
-    L('No mail.'),
-    ...(plan ? [L('Plan:'), ...lines(read(plan))] : [L('No Plan.')]),
-  ];
 }
 
 // --- system -----------------------------------------------------------------
@@ -414,17 +363,6 @@ function echo(args, ctx) {
   return [L(args.map(a => expand(a, ctx)).join(' '))];
 }
 
-function exit(args, ctx) {
-  return [
-    L('logout'),
-    { spans: [{ text: `Connection to ${sys.host} closed.` }], delay: 400 },
-    { spans: [{ text: '' }], delay: 900 },
-    L(`reconnecting to ${sys.host} ...`, 'dim'),
-    { spans: [{ text: `Last login: ${new Date().toDateString()} from tty1` }], delay: 700 },
-    ...lines(read(get('/etc/motd'))),
-  ];
-}
-
 function theme([which], ctx) {
   const themes = ['green', 'amber', 'white'];
   if (!themes.includes(which)) return [L(`usage: theme <${themes.join('|')}>`)];
@@ -442,74 +380,26 @@ function sudo(args, ctx) {
   ];
 }
 
-function rm(args) {
-  const { flags, longs, paths } = parse(args);
-  if (!paths.length) return [L('rm: missing operand'), L("Try 'man rm' for more information.")];
-  if (paths.includes('/') && flags.has('r')) {
-    if (longs.has('no-preserve-root')) return [
-      { spans: [{ text: "rm: cannot remove '/': Read-only file system" }], delay: 1200 },
-      L('nice try.', 'dim'),
-    ];
-    return [
-      { spans: [{ text: "rm: it is dangerous to operate recursively on '/'" }], delay: 700 },
-      L('rm: use --no-preserve-root to override this failsafe'),
-    ];
-  }
-  return paths.map(p => L(`rm: cannot remove '${p}': Read-only file system`));
-}
-
-function vim([f]) {
-  return [L(`opening ${f ?? 'a new buffer'} ...`, 'dim'), L('to exit, close the tab.')];
-}
-
-const fortunes = () => read(get('/usr/share/games/fortunes/unikorm')).split('\n%\n');
-const fortune = () => lines(fortunes()[Math.floor(Math.random() * fortunes().length)]);
-
-function cowsay(args) {
-  const text = args.length ? args.join(' ') : fortunes()[Math.floor(Math.random() * fortunes().length)];
-  const words = text.split(' '), rows = [''];
-  for (const w of words) {
-    if (rows.at(-1).length + w.length + 1 > 40 && rows.at(-1)) rows.push('');
-    rows[rows.length - 1] = (rows.at(-1) + ' ' + w).trim();
-  }
-  const w = Math.max(...rows.map(r => r.length));
-  const bubble = rows.length === 1 ? [`< ${rows[0]} >`]
-    : rows.map((r, i) => `${i === 0 ? '/' : i === rows.length - 1 ? '\\' : '|'} ${r.padEnd(w)} ${i === 0 ? '\\' : i === rows.length - 1 ? '/' : '|'}`);
-  return [
-    L(' ' + '_'.repeat(w + 2)),
-    ...bubble.map(t => L(t)),
-    L(' ' + '-'.repeat(w + 2)),
-    ...[
-      '        \\   ^__^',
-      '         \\  (oo)\\_______',
-      '            (__)\\       )\\/\\',
-      '                ||----w |',
-      '                ||     ||',
-    ].map(t => L(t)),
-  ];
-}
-
 // --- the table ----------------------------------------------------------------
 
 export const commands = {
   // navigation
   ls, cd, pwd, tree, find, grep,
   // reading
-  cat, less: cat, more: cat, head: headTail('head'), tail: headTail('tail'), man, file, which, stat,
+  cat, head: headTail('head'), tail: headTail('tail'), man, which,
   // identity
   whoami: () => [L('nobody')],
   id: () => [L('uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)')],
-  uname: (args) => [L(parse(args).flags.has('a') ? `Linux ${HANDLE} ${sys.kernel} #1 SMP PREEMPT_DYNAMIC ${sys.arch} GNU/Linux` : 'Linux')],
   hostname: () => [L(read(get('/etc/hostname')))],
-  uptime: () => [L(` ${clock()} up ${up()},  1 user,  load average: ${sys.load}`)],
-  neofetch, finger,
+  uptime: () => [L(` ${clock()} up ${up()},  1 user}`)],
+  neofetch,
   // system
-  dmesg: () => read(get('/var/log/dmesg')).split('\n').map(t => L(t, t.includes('WARNING') ? 'warn' : t.includes('[  ok  ]') ? 'bright' : undefined)),
+
   top, ps, df, free, history, date, env, alias,
   // shell
   help: () => [L("help doesn't come here", 'dim')],
-  clear: (args, ctx) => { ctx.clear(); return []; },
-  echo, exit, theme,
+  clear: (ctx) => { ctx.clear(); return []; },
+  echo, theme,
   // jokes
-  sudo, rm, vim, vi: vim, nano: vim, emacs: vim, fortune, cowsay,
+  sudo,
 };

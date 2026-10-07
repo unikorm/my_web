@@ -15,8 +15,7 @@ const ctx = {
   cwd: HOME,
   prev: HOME,
   env: {
-    USER: 'visitor69', HOME, SHELL: '/bin/bash', PATH: '/usr/local/bin:/usr/bin:/bin',
-    TERM: 'xterm-256color', HOSTNAME: 'unikorm.eu', LANG: 'en_US.UTF-8', EDITOR: 'vim',
+    USER: 'visitor69', HOME, SHELL: '/bin/bash', PATH: '/usr/local/bin:/usr/bin:/bin', HOSTNAME: 'unikorm.eu',
   },
   history: [],
   aliases: {},

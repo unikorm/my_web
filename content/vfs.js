@@ -2,7 +2,7 @@
 // explicit entries; their children are found by path prefix. Adding a blog
 // post is one new entry here and nothing else.
 //
-// Node: { type: 'dir' | 'file' | 'link' | 'device', mtime, body?, target?,
+// Node: { type: 'dir' | 'file' | 'link', mtime, body?, target?,
 //         mode?, owner?, locked? }
 // mode and owner default to the usual (drwxr-xr-x root, -rw-r--r--, and the
 // handle for anything under HOME). Size is the real byte count of the body.
@@ -15,7 +15,7 @@ const file = (mtime, body, extra = {})   => ({ type: 'file',   mtime, body, ...e
 const link = (mtime, target)             => ({ type: 'link',   mtime, target });
 
 export const vfs = new Map(Object.entries({
-  '/': dir('2020-09-01'),
+  '/': dir('1999-09-02'),
 
   // --- etc --------------------------------------------------------------
   '/etc': dir('2020-09-01'),
@@ -79,9 +79,7 @@ alias la='ls -la'
 alias l='ls -lah'
 alias ..='cd ..'
 alias cls='clear'
-alias please='sudo'
-
-export EDITOR=vi`),
+alias please='sudo'`),
   '/home/unikorm/projects': link('2026-10-03', '/opt'),
 
   // --- media ------------------------------------------------------------
@@ -146,7 +144,7 @@ Mems_allowed:  see free -h`),
   '/usr/share': dir('2016-09-02'),
   '/usr/share/man': dir('2026-10-03'),
   '/usr/share/man/man1': dir('2026-10-03'),
-  '/usr/share/man/man1/life': file('2026-10-7',
+  '/usr/share/man/man1/life.1': file('2026-10-7',
 `life -- how it works
 
 
