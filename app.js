@@ -12,7 +12,7 @@ const label = document.querySelector('.prompt');
 const ctx = {
   user: 'visitor69',
   host: 'unikorm',
-  cwd: HOME,
+  cwd: HOME, // current working directory
   prev: HOME,
   env: {
     USER: 'visitor69', HOME, SHELL: '/bin/bash', PATH: '/usr/local/bin:/usr/bin:/bin', HOSTNAME: 'unikorm.eu',
