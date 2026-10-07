@@ -60,3 +60,36 @@ export function meta(path) {
   const nlink = n.type === 'dir' ? 2 + children(path).filter(c => get(join(path, c))?.type === 'dir').length : 1;
   return { ...n, mode: n.mode ?? DEFAULT_MODE[n.type], owner, size, nlink, mtime: n.mtime ?? '2026-01-01' };
 }
+
+// longest string every candidate starts with
+const common = (xs) => xs.reduce((a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return a.slice(0, i); });
+
+// Tab completion, bash-style. The first word completes against command names,
+// every later word against paths. Returns the new line and the candidates, so
+// the caller can list them when the line can't grow any further.
+export function complete(line, cwd, names) {
+  const start = line.search(/\S*$/);
+  const word = line.slice(start);
+  const first = !line.slice(0, start).trim();
+
+  let head, matches;
+  if (first && !word.includes('/')) {
+    head = '';
+    matches = [...new Set(names)].filter(n => n.startsWith(word)).sort().map(n => n + ' ');
+  } else {
+    // "op" lists cwd, "/usr/lo" lists /usr, "~/pro" lists home
+    head = word.slice(0, word.lastIndexOf('/') + 1);
+    const dir = follow(resolve(head || '.', cwd));
+    const prefix = word.slice(head.length);
+    matches = !isDir(dir) || locked(dir) ? [] : children(dir)
+      .filter(c => c.startsWith(prefix) && (prefix.startsWith('.') || !c.startsWith('.')))
+      .map(c => c + (isDir(join(dir, c)) ? '/' : ' '));
+  }
+
+  if (!matches.length) return { line, options: [] };
+  const done = matches.length === 1 ? matches[0] : common(matches);
+  return {
+    line: line.slice(0, start) + head + done,
+    options: matches.length > 1 ? matches.map(m => m.trimEnd()) : [],
+  };
+}
