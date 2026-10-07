@@ -311,14 +311,6 @@ function top() {
   return [...head.map(t => L(t)), L(rows[0], 'invert'), ...rows.slice(1).map(t => L(t))];
 }
 
-function ps() {
-  const rows = table([
-    ['USER', 'PID', '%CPU', '%MEM', 'STAT', 'START', 'TIME', 'COMMAND'],
-    ...procs.map(p => [p.user, p.pid, p.cpu.toFixed(1), p.mem.toFixed(1), p.s, '2016', p.time, p.cmd]),
-  ], [1, 2, 3]);
-  return rows.map((t, i) => L(t, i ? undefined : 'bright'));
-}
-
 function df() {
   return table([['Filesystem', 'Size', 'Used', 'Avail', 'Use%', 'Mounted on'], ...disks], [1, 2, 3, 4]).map((t, i) => L(t, i ? undefined : 'bright'));
 }
@@ -345,32 +337,9 @@ function date() {
   return [L(`${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${String(d.getDate()).padStart(2)} ${clock(d)} ${tz} ${d.getFullYear()}`)];
 }
 
-function env(args, ctx) {
-  return Object.entries({ ...ctx.env, PWD: ctx.cwd }).map(([k, v]) => L(`${k}=${v}`));
-}
-
-function alias(args, ctx) {
-  if (!args.length) return Object.entries(ctx.aliases).sort().map(([k, v]) => L(`alias ${k}='${v}'`));
-  const m = args.join(' ').match(/^([^=\s]+)=(.*)$/);
-  if (!m) return [L(`bash: alias: ${args[0]}: not found`)];
-  ctx.aliases[m[1]] = m[2];
-  return [];
-}
-
-// --- shell ------------------------------------------------------------------
-
 function echo(args, ctx) {
   return [L(args.map(a => expand(a, ctx)).join(' '))];
 }
-
-function theme([which], ctx) {
-  const themes = ['green', 'amber', 'white'];
-  if (!themes.includes(which)) return [L(`usage: theme <${themes.join('|')}>`)];
-  ctx.theme(which);
-  return [];
-}
-
-// --- jokes that must exist --------------------------------------------------
 
 function sudo(args, ctx) {
   if (!args.length) return [L('usage: sudo <command>')];
@@ -394,12 +363,11 @@ export const commands = {
   uptime: () => [L(` ${clock()} up ${up()},  1 user}`)],
   neofetch,
   // system
-
-  top, ps, df, free, history, date, env, alias,
+  top, df, free, history, date,
   // shell
   help: () => [L("help doesn't come here", 'dim')],
   clear: (ctx) => { ctx.clear(); return []; },
-  echo, theme,
+  echo,
   // jokes
-  sudo,
+  sudo
 };
