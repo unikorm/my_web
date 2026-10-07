@@ -13,134 +13,21 @@ export const HOME = '/home/unikorm';
 const dir  = (mtime, extra = {})         => ({ type: 'dir',    mtime, ...extra });
 const file = (mtime, body, extra = {})   => ({ type: 'file',   mtime, body, ...extra });
 const link = (mtime, target)             => ({ type: 'link',   mtime, target });
-const dev  = (mtime, body)               => ({ type: 'device', mtime, body, mode: 'crw-rw-rw-' });
-
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
-
-const thoughts = [
-  'every system is legacy the moment it works',
-  'the best code is the code you deleted last week',
-  'naming things is hard. so is everything else, we just have no saying for it',
-  'deploy on friday. live a little. (do not deploy on friday)',
-  'a terminal is a conversation. a website is a monologue',
-  'ship it. then write the blog post. then fix it. then repeat',
-  'the second rewrite is the good one. the third is procrastination',
-];
 
 export const vfs = new Map(Object.entries({
   '/': dir('2020-09-01'),
 
-  // --- boot -------------------------------------------------------------
-  '/boot':      dir('2020-09-01'),
-  '/boot/grub': dir('2020-09-01'),
-  '/boot/grub/grub.cfg': file('2020-09-01',
-`# grub.cfg -- what loaded this person. do not edit, it is already booted.
-
-set default=0
-set timeout=5
-
-menuentry 'unikorm, with linux 6.8' {
-    echo 'loading curiosity ...'
-    linux   /vmlinuz root=/dev/first_computer ro quiet
-    initrd  /initrd.img-dial-up
-}
-
-menuentry 'unikorm (recovery mode)' {
-    linux   /vmlinuz root=/dev/first_computer ro single nomodeset
-    echo 'the one where everything is fixed by turning it off and on'
-}
-
-# 2016: first line of code. it printed hello. it was enough.`),
-
-  // --- dev --------------------------------------------------------------
-  '/dev': dir('2016-09-01'),
-  '/dev/null': dev('2020-09-01',
-`# things written to /dev/null, in order of arrival
-
-meetings that could have been a commit message
-tabs vs spaces debates
-"just one more dependency"
-dark patterns
-loud keyboards in open offices
-unsolicited linkedin wisdom`),
-  '/dev/urandom': dev('2020-09-01', () => pick(thoughts)),
-
   // --- etc --------------------------------------------------------------
   '/etc': dir('2020-09-01'),
   '/etc/hostname': file('2020-09-01', 'unikorm.eu'),
-  '/etc/motd': file('2020-09-01',
-`unikorm.eu  --  a shell, a filesystem, nothing else
-
-  ls /            see what is here
-  man unikorm     who is this guy
-  ls -lt /var/log the blog, newest first
-  cat /etc/motd   this
-
-no cookies, no tracking, no framework. just a prompt.`),
-  '/etc/os-release': file('2020-09-01',
-`NAME="unikorm"
-VERSION="1.0 (ten years in)"
-ID=unikorm
-ID_LIKE=debian
-PRETTY_NAME="unikorm 1.0"
-VERSION_ID="1.0"
-BUILD_ID=2016
-HOME_URL="https://unikorm.eu"
-SUPPORT_URL="https://github.com/unikorm"
-BUG_REPORT_URL="/dev/null"`),
-  '/etc/passwd': file('2020-09-01',
-`root:x:0:0:root:/root:/bin/bash
-unikorm:x:1000:1000:Adam,somewhere in .eu:/home/unikorm:/bin/bash
-visitor69:x:1001:1001:you,here:/home/unikorm:/bin/bash
-nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin`),
-  '/etc/shells': file('2020-09-01',
-`# /etc/shells: valid login shells
-/bin/bash
-/usr/bin/node          # v24, the daily driver
-/usr/bin/tsc           # strict. no excuses.
-/usr/bin/python3       # when the script is small and the deadline is close
-/usr/sbin/nginx        # for serving things, not for thinking about them
-# /usr/bin/zsh         # tried it. came back.`),
-  '/etc/fstab': file('2020-09-01',
-`# <file system>     <mount point>  <type>  <options>                  <dump> <pass>
-/dev/coffee         /              ext4    defaults,noatime           0      1
-/dev/family         /home          ext4    defaults,nofail            0      2
-/dev/side_projects  /opt           ext4    defaults,x-systemd.automount 0    2
-/dev/music          /media         vfat    ro,loud                    0      0
-tmpfs               /tmp           tmpfs   size=ideas,mode=1777       0      0
-/dev/sleep          none           swap    sw,insufficient            0      0`),
-  '/etc/hosts': file('2020-09-01',
-`127.0.0.1       localhost
-127.0.1.1       unikorm.eu
-
-# worth visiting
-140.82.112.3    github.com              # where the code lives
-
-# worth blocking
-0.0.0.0         news.ycombinator.com    # "just five minutes"`),
   '/etc/aliases': file('2020-09-01',
-`# /etc/aliases -- where mail for this host ends up
+`# /etc/aliases -- where to reach me
 
-postmaster:  adam
-hire:        adam
-coffee:      adam
-abuse:       /dev/null
+hire:        https://www.linkedin.com/in/adam-lednicky-17159b243/
 adam:        adaled00@gmail.com
 git:         https://github.com/unikorm`),
 
   '/etc/cron.d': dir('2020-09-01'),
-  '/etc/cron.d/unikorm': file('2020-09-01',
-`# /etc/cron.d/unikorm -- the routines that actually run
-# m   h   dom mon dow   user     command
-  0   7   *   *   1-5   unikorm  coffee && git pull --rebase
-  30  7   *   *   1-5   unikorm  standup --planned=15m --actual=40m
-  0   9   *   *   1-5   unikorm  tsc --watch                 # the real job
-  0   12  *   *   *     unikorm  lunch || snack
-  */15 *  *   *   *     unikorm  check-ci                    # nothing changed
-  0   18  *   *   1-5   unikorm  git push && close-laptop
-  0   10  *   *   6     unikorm  touch grass
-  0   2   *   *   *     root     sleep --force               # frequently fails
-  0   0   1   *   *     unikorm  echo "this month: blog more" >> /var/spool/next`),
   '/etc/cron.d/momentkaph': file('2026-10-01',
 `# /etc/cron.d/momentkaph -- side project hours
 # m   h   dom mon dow   user     command
@@ -167,29 +54,21 @@ Rewrite.from_scratch        = after-the-second-time`),
 `# /etc/opinions.d/40-tooling.conf
 # last modified 2026-04-02
 
-TypeScript.strict           = always
-TypeScript.enums            = never         # use unions
-TypeScript.any              = emergency-only
 Dependencies.add            = reluctantly
 Dependencies.remove         = eagerly
-Build.step                  = optional      # see: this site
-# Microservices             = default       # deprecated 2023
-Microservices               = when-org-chart-demands-it
+Build.step                  = optional
 Deploy.day                  = not-friday
 Deploy.method               = tarball + ssh # boring is a feature
-Editor                      = vim           # see: man vim`),
+Editor                      = vs code
+Terminal                    = love it`),
   '/etc/opinions.d/90-life.conf': file('2026-04-02',
 `# /etc/opinions.d/90-life.conf
 # last modified 2026-04-02
 
-Meetings.default            = decline
-Meetings.with_agenda        = maybe
+Meetings.default            = accept
 Notifications               = off
-Coffee.count                = 2             # three is a cry for help
-Side_projects.limit         = 2             # currently: 2
-Sleep.hours                 = 8             # see /etc/fstab, swap is insufficient
-Boring_software             = good
-Borin_shits                 = too-short-for  # see /var/log`),
+Side_projects.limit         = 2             # currently: 4
+Sleep.hours                 = 7`),
 
   // --- home -------------------------------------------------------------
   '/home': dir('2016-09-01'),
@@ -204,44 +83,8 @@ alias ..='cd ..'
 alias cls='clear'
 alias please='sudo'
 
-export EDITOR=vim          # see: man vim. or do not.
-export HISTSIZE=200`),
-  '/home/unikorm/.plan': file('2026-10-03',
-`what is on my mind this week
-
-  - this site. a shell as a homepage. commands > pages.
-  - momentkaph: ci/cd pipeline, nginx configs, tarballs over sftp
-  - writing more. /var/log is embarrassingly short.
-  - sleep. see /etc/fstab, swap is insufficient.`),
-  '/home/unikorm/.env': file('2026-10-03',
-`# never commit this file.
-# (it is on a public website, but never commit it.)
-
-NODE_ENV=production
-DEBUG=false                       # it is true
-SECRET_KEY=hunter2
-DATABASE_URL=postgres://me:password@localhost:5432/feelings
-JWT_SECRET=please-dont-look
-OPENAI_API_KEY=sk-nope
-COFFEE_API_KEY=unlimited
-IMPOSTER_SYNDROME=enabled
-CACHE_TTL=forever                 # i never forget a bad merge
-SLEEP_HOURS=6                     # see swap in /etc/fstab
-ADMIN_PASSWORD=                   # blank on purpose, like sundays`, { mode: '-rw-------' }),
+export EDITOR=vi`),
   '/home/unikorm/projects': link('2026-10-03', '/opt'),
-
-  // --- lost+found -------------------------------------------------------
-  '/lost+found': dir('2021-11-30'),
-  '/lost+found/#0001': file('2017-05-20',
-`name:    yet another todo app
-born:    2017-02
-died:    2017-05
-cause:   completed all of its todos. existential crisis.`),
-  '/lost+found/#0002': file('2021-11-30',
-`name:    the game (never named)
-born:    2020-04
-died:    2021-11
-cause:   scope creep. survived by 14 branches.`),
 
   // --- media ------------------------------------------------------------
   '/media': dir('2026-10-01'),
@@ -251,14 +94,10 @@ cause:   scope creep. survived by 14 branches.`),
 - (replace me) a book about systems
 - (replace me) something not about computers`),
   '/media/music': file('2026-10-01',
-`# on repeat while the build runs:
+`# on repeat while the society falls:
 
 - (replace me) one album
 - (replace me) one playlist, badly named`),
-  '/media/games': file('2026-09-01',
-`# not much. see /lost+found/#0002 for why.
-
-- (replace me)`),
 
   // --- opt --------------------------------------------------------------
   '/opt': dir('2026-10-03'),
@@ -269,16 +108,6 @@ cause:   scope creep. survived by 14 branches.`),
 
 this site. a shell, a filesystem, and nothing else.
 source: https://github.com/unikorm/my_web`),
-  '/opt/my_web/VERSION': file('2026-10-03', '0.3.0'),
-  '/opt/my_web/CHANGELOG': file('2026-10-03',
-`0.3.0  2026-10-03  the filesystem fills up. ls -l, man, free, friends.
-0.2.0  2026-10-03  a filesystem. ls, cd, pwd, cat, tree.
-0.1.0  2026-10-03  a prompt, a cursor, a vignette. four commands.
-0.0.1  2026-09-24  a spec and an idea.`),
-  '/opt/my_web/LINKS': file('2026-10-03',
-`source   https://github.com/unikorm/my_web
-live     https://unikorm.eu
-spec     /usr/share/doc/my_web/ARCHITECTURE`),
   '/opt/momentkaph': dir('2026-09-28'),
   '/opt/momentkaph/README.md': file('2026-09-28',
 `momentkaph
@@ -289,14 +118,6 @@ a web app in two halves. (replace me: what it does, in one sentence)
 backend    node 24, typescript, packaged as a tarball, served behind nginx
 frontend   static, mirrored to the webspace over sftp
 pipeline   github actions. push to main, wait, refresh, pray.`),
-  '/opt/momentkaph/VERSION': file('2026-09-28', '1.0.0'),
-  '/opt/momentkaph/CHANGELOG': file('2026-09-28',
-`1.0.0  2026-09  ci/cd: build, hash the nginx configs, ship tarballs
-0.9.0  2026-08  it runs on someone else's computer now
-0.1.0  2026-05  it runs on my computer`),
-  '/opt/momentkaph/LINKS': file('2026-09-28',
-`source   https://github.com/unikorm
-status   /proc/self/status`),
 
   // --- proc -------------------------------------------------------------
   '/proc': dir('2026-10-03'),
@@ -305,10 +126,10 @@ status   /proc/self/status`),
   '/proc/self/status': file('2026-10-03',
 `Name:      unikorm
 State:     R (running)
-Role:      software developer        # (replace me)
+Role:      system integration engineer
 Employer:  (replace me)
-Threads:   3                         # work, side projects, sleep
-Blocked:   waiting on ci
+Threads:   4                         # work, family, side projects, sleep
+Blocked:   waiting on more time
 Open:      to interesting problems
 Cpus_allowed:  1
 Mems_allowed:  see free -h`),
@@ -318,19 +139,9 @@ Mems_allowed:  see free -h`),
 
   // --- srv --------------------------------------------------------------
   '/srv': dir('2026-10-03'),
-  '/srv/README': file('2026-10-03',
-`nothing is served from here.
-the blog is in /var/log. try: ls -lt /var/log`),
 
   // --- tmp --------------------------------------------------------------
   '/tmp': dir('2026-10-03', { mode: 'drwxrwxrwt' }),
-  '/tmp/ideas.txt': file('2026-10-03',
-`# /tmp -- cleared on reboot. do not rely on anything in here.
-
-- a cli that writes the commit message from the diff (surely exists)
-- a blog post about why this site is a terminal
-- a pomodoro that respects nice values
-- rewrite everything in rust (no)`),
 
   // --- usr --------------------------------------------------------------
   '/usr': dir('2016-09-01'),
