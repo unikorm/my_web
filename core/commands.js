@@ -83,7 +83,7 @@ const expand = (word, ctx) => word.replace(/^~(?=\/|$)/, HOME).replace(/\$(\w+)/
 const BUILTINS = new Set(['cd', 'pwd', 'echo', 'alias', 'history', 'exit', 'help', 'theme']);
 
 // --- navigation -------------------------------------------------------------
-function pwd(ctx) { return [L(ctx.cwd)]; }
+function pwd(args, ctx) { return [L(ctx.cwd)]; }
 
 function cd([arg], ctx) {
   const path = arg === '-' ? ctx.prev : resolve(arg, ctx.cwd);
@@ -366,7 +366,7 @@ export const commands = {
   top, df, free, history, date,
   // shell
   help: () => [L("help doesn't come here", 'dim')],
-  clear: (ctx) => { ctx.clear(); return []; },
+  clear: (args, ctx) => { ctx.clear(); return []; },
   echo,
   // jokes
   sudo
