@@ -111,17 +111,32 @@ input.addEventListener('keydown', (e) => {
   }
 });
 
-// the input is exactly as wide as its text, so the block cursor sits right after it
-function sync() { input.style.width = input.value.length + 'ch'; }
+// the input is exactly as wide as its text, so the block cursor sits right after it,
+// then slides back over the character the (hidden) caret is on
+function sync() {
+  input.style.width = input.value.length + 'ch';
+  form.style.setProperty('--back', input.value.length - (input.selectionStart ?? input.value.length));
+}
 
-// cursor stops blinking while typing
+// cursor stops blinking while typing or moving
 let typing;
-input.addEventListener('input', () => {
-  tabbed = false;
-  sync();
+function hold() {
   form.classList.add('typing');
   clearTimeout(typing);
   typing = setTimeout(() => form.classList.remove('typing'), 500);
+}
+
+input.addEventListener('input', () => {
+  tabbed = false;
+  sync();
+  hold();
+});
+
+// left/right, home/end, clicks: the caret moved, so move the block with it
+document.addEventListener('selectionchange', sync);
+input.addEventListener('keydown', (e) => {
+  if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') hold();
+  requestAnimationFrame(sync);
 });
 
 // tapping anywhere in the terminal focuses the input

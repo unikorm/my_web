@@ -81,6 +81,8 @@ body::after {
   width: 1ch;
   height: 1.2em;
   background: var(--fg);
+  transform: translateX(calc(var(--back, 0) * -1ch));   /* set by app.js to follow the caret */
+  mix-blend-mode: difference;   /* the character under the block stays readable */
   animation: blink 1.2s steps(1) infinite;
 }
 
